@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelVision | AI CCTV Activity Detection & Surveillance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0d14;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --border-color: #1f2937;
+      --border-highlight: #374151;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-purple: #8b5cf6;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --accent-green: #10b981;
+      --color-loitering: #ef4444;
+      --color-intrusion: #f97316;
+      --color-running: #3b82f6;
+      --color-crowd: #8b5cf6;
+      --color-falling: #e11d48;
+      --color-abandoned: #14b8a6;
+      --color-fire-smoke: #f59e0b;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* Header */
+    header {
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.4);
+    }
+    .brand-logo svg { fill: white; width: 20px; height: 20px; }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: var(--accent-cyan);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* Left Section: Video & Controls */
+    .video-viewport-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .video-stage-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      position: relative;
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* Live HUD Alert Bar */
+    .hud-alert-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .hud-alert-banner.alert-active {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.6);
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    /* Video & Canvas Overlay */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      background: #000;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    canvas#zoneCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Timeline Section */
+    .timeline-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+    }
+    .timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    .timeline-legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+    }
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .timeline-track-container {
+      position: relative;
+      height: 38px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .timeline-segment-bar {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      border-radius: 4px;
+      opacity: 0.85;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .timeline-segment-bar:hover {
+      transform: scaleY(1.15);
+      opacity: 1;
+      z-index: 20;
+    }
+    .timeline-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 8px #ffffff;
+      pointer-events: none;
+      z-index: 30;
+      transition: left 0.1s linear;
+    }
+
+    /* Zone Selector & Area Minimizer Toolbar */
+    .zone-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+    }
+    .zone-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .zone-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .zone-select {
+      background: #1f2937;
+      border: 1px solid var(--border-highlight);
+      color: var(--text-primary);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .btn-secondary {
+      background: #1f2937;
+      border: 1px solid var(--border-highlight);
+      color: var(--text-primary);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #374151;
+      border-color: #4b5563;
+    }
+
+    /* Right Section: Sidebar & Feed */
+    .sidebar-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Upload Box */
+    .upload-zone {
+      border: 2px dashed var(--border-highlight);
+      border-radius: var(--radius-md);
+      padding: 20px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(17, 24, 39, 0.4);
+    }
+    .upload-zone:hover {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    .upload-zone input { display: none; }
+    .upload-icon {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      margin-top: 12px;
+      background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.95; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Summary Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .stat-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Detected Events Feed */
+    .events-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .events-scroll::-webkit-scrollbar { width: 4px; }
+    .events-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+
+    .event-card {
+      background: rgba(31, 41, 55, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .event-card:hover {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.1);
+      transform: translateX(2px);
+    }
+    .event-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .event-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-loitering { background: rgba(239, 68, 68, 0.2); color: var(--color-loitering); }
+    .badge-intrusion { background: rgba(249, 115, 22, 0.2); color: var(--color-intrusion); }
+    .badge-running { background: rgba(59, 130, 246, 0.2); color: var(--color-running); }
+    .badge-crowd { background: rgba(139, 92, 246, 0.2); color: var(--color-crowd); }
+    .badge-falling { background: rgba(225, 29, 72, 0.2); color: var(--color-falling); }
+    .badge-abandoned { background: rgba(20, 184, 166, 0.2); color: var(--color-abandoned); }
+    .badge-fire-smoke { background: rgba(245, 158, 11, 0.2); color: var(--color-fire-smoke); }
+
+    .event-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .event-jump-btn {
+      font-size: 0.75rem;
+      background: #1f2937;
+      border: 1px solid var(--border-highlight);
+      color: var(--accent-cyan);
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* JSON Raw Inspector */
+    details {
+      font-size: 0.8rem;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    pre#jsonView {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      max-height: 200px;
+      overflow: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: #93c5fd;
+    }
+
+    /* Spinner */
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-left-color: #fff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      </div>
+      <div>
+        <h1 class="brand-title">SentinelVision Analytics</h1>
+      </div>
+      <span class="brand-badge">YOLOv8 + ByteTrack</span>
+    </div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span>Pipeline Engine Online</span>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main>
+
+    <!-- Left: Video Player, Overlays, and Visual Timeline -->
+    <div class="video-viewport-panel">
+
+      <!-- Stage Card -->
+      <div class="video-stage-card">
+
+        <!-- Live HUD Status -->
+        <div id="hudBanner" class="hud-alert-banner">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="hudIcon">🟢</span>
+            <span id="hudStatus">STANDBY — Upload or select a CCTV clip to begin analysis</span>
+          </div>
+          <span id="hudTime" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; opacity: 0.8;">00:00.0</span>
+        </div>
+
+        <!-- Video & Canvas Container -->
+        <div class="video-wrapper">
+          <video id="mainVideo" controls playsinline>
+            <source src="/uploads/campus_walk_30s.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+          <canvas id="zoneCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Area Minimizer & Zone Selector Toolbar -->
+      <div class="zone-toolbar">
+        <div class="zone-group">
+          <span class="zone-label">Detection Zone:</span>
+          <select id="zonePresetSelect" class="zone-select" onchange="applyZonePreset(this.value)">
+            <option value="full">Full Frame (100% Coverage)</option>
+            <option value="center" selected>Center Restricted Corridor (Minimized Area)</option>
+            <option value="left">Left Entrance / Pathway</option>
+            <option value="right">Right Perimeter</option>
+            <option value="custom">Custom Draw (Click on Video)</option>
+          </select>
+        </div>
+
+        <div class="zone-group">
+          <button class="btn-secondary" onclick="toggleZoneOverlay()">Toggle Zone Overlay</button>
+          <button class="btn-secondary" onclick="resetCustomZone()">Reset Points</button>
+        </div>
+      </div>
+
+      <!-- Interactive Timeline Card -->
+      <div class="timeline-card">
+        <div class="timeline-header">
+          <span>Interactive Anomaly Timeline (Click bars to seek video)</span>
+          <div class="timeline-legend">
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-running);"></div> Running</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-crowd);"></div> Crowd</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-intrusion);"></div> Intrusion</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-loitering);"></div> Loitering</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-falling);"></div> Falling</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-abandoned);"></div> Abandoned Object</div>
+            <div class="legend-item"><div class="legend-box" style="background: var(--color-fire-smoke);"></div> Fire / Smoke</div>
+          </div>
+        </div>
+
+        <div id="timelineTrack" class="timeline-track-container" onclick="handleTimelineClick(event)">
+          <div id="timelinePlayhead" class="timeline-playhead" style="left: 0%;"></div>
+          <!-- Segment bars injected dynamically -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Upload, Feed, Analytics -->
+    <div class="sidebar-panel">
+
+      <!-- Upload / Select Card -->
+      <div class="card">
+        <h3 class="card-title">CCTV Video Input</h3>
+        <label class="upload-zone">
+          <input type="file" id="videoFileInput" accept="video/*" onchange="handleFileSelected(event)">
+          <div class="upload-icon">📹</div>
+          <div style="font-size: 0.85rem; font-weight: 600;" id="fileNameDisplay">Choose / Drop Video (.mp4)</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">Or run analysis on current clip</div>
+        </label>
+
+        <div style="margin: 14px 0 10px;">
+          <label for="analysisMode" style="display: block; margin-bottom: 6px; font-size: 0.75rem; color: var(--text-secondary);">Video activity profile</label>
+          <select id="analysisMode" class="zone-select" style="width: 100%;">
+            <option value="people" selected>People & restricted-zone monitoring</option>
+            <option value="fall">Fall detection clip</option>
+            <option value="abandoned">Abandoned luggage clip</option>
+            <option value="fire">Fire / smoke clip</option>
+            <option value="all">Run every analyzer (exploratory)</option>
+          </select>
+          <div style="margin-top: 6px; font-size: 0.72rem; color: var(--text-secondary);">Choose the profile that matches the video to avoid unrelated false alerts.</div>
+        </div>
+
+        <button id="analyzeBtn" class="btn-primary" onclick="runAnalysis()">
+          <span id="btnSpinner" class="spinner" style="display: none;"></span>
+          <span id="btnText">Analyze Video</span>
+        </button>
+      </div>
+
+      <!-- Summary Statistics Card -->
+      <div class="card">
+        <h3 class="card-title">Analysis Summary</h3>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-val" id="statEventsCount">0</div>
+            <div class="stat-label">Events Flagged</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statMaxCrowd">0</div>
+            <div class="stat-label">Max Crowd Tracks</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detected Events Activity Feed -->
+      <div class="card" style="flex: 1;">
+        <h3 class="card-title">
+          <span>Detected Activity Events</span>
+          <span id="eventCounterBadge" class="badge badge-running" style="font-size: 0.7rem;">0 found</span>
+        </h3>
+
+        <div id="eventsList" class="events-scroll">
+          <div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 20px 0;">
+            No events detected yet. Click <strong>Analyze Video</strong> above.
+          </div>
+        </div>
+      </div>
+
+      <!-- Raw JSON Collapsible -->
+      <div class="card">
+        <details>
+          <summary>View Raw JSON Payload</summary>
+          <pre id="jsonView">{}</pre>
+        </details>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    // State
+    const video = document.getElementById('mainVideo');
+    const canvas = document.getElementById('zoneCanvas');
+    const ctx = canvas.getContext('2d');
+    const hudBanner = document.getElementById('hudBanner');
+    const hudStatus = document.getElementById('hudStatus');
+    const hudIcon = document.getElementById('hudIcon');
+    const hudTime = document.getElementById('hudTime');
+    const timelineTrack = document.getElementById('timelineTrack');
+    const playhead = document.getElementById('timelinePlayhead');
+    const eventsList = document.getElementById('eventsList');
+    const jsonView = document.getElementById('jsonView');
+
+    let currentSegments = [];
+    let showZoneOverlay = true;
+    let customPoints = [];
+    let activeZone = null;
+
+    // Presets defined as percentage coordinates [pct_x, pct_y] (0.0 to 1.0)
+    const ZONE_PRESETS = {
+      full: [ [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0] ],
+      center: [ [0.25, 0.20], [0.75, 0.20], [0.75, 0.95], [0.25, 0.95] ],
+      left: [ [0.0, 0.20], [0.45, 0.20], [0.45, 0.95], [0.0, 0.95] ],
+      right: [ [0.55, 0.20], [1.0, 0.20], [1.0, 0.95], [0.55, 0.95] ]
+    };
+
+    activeZone = ZONE_PRESETS.center;
+
+    // Synchronize canvas size with video display (account for object-fit: contain letterboxing)
+    function syncCanvas() {
+      // Guard: video metadata may not be loaded yet
+      if (!video.videoWidth || !video.videoHeight) return;
+
+      const containerRect = canvas.parentElement.getBoundingClientRect();
+
+      // Calculate the actual video display size (object-fit: contain may letterbox)
+      const videoRatio = video.videoWidth / video.videoHeight;
+      const containerRatio = containerRect.width / containerRect.height;
+
+      let videoW, videoH, offsetX = 0, offsetY = 0;
+      if (videoRatio > containerRatio) {
+        // Video is wider relative to its height — fit to container width
+        videoW = containerRect.width;
+        videoH = containerRect.width / videoRatio;
+        offsetY = (containerRect.height - videoH) / 2;
+      } else {
+        // Video is taller relative to its width — fit to container height
+        videoH = containerRect.height;
+        videoW = containerRect.height * videoRatio;
+        offsetX = (containerRect.width - videoW) / 2;
+      }
+
+      // Store offsets for coordinate conversion
+      canvas._videoOffsetX = offsetX;
+      canvas._videoOffsetY = offsetY;
+      canvas._videoDisplayW = videoW;
+      canvas._videoDisplayH = videoH;
+
+      canvas.width = videoW;
+      canvas.height = videoH;
+      canvas.style.left = `${offsetX}px`;
+      canvas.style.top = `${offsetY}px`;
+      canvas.style.width = `${videoW}px`;
+      canvas.style.height = `${videoH}px`;
+      drawZone();
+    }
+    window.addEventListener('resize', syncCanvas);
+    video.addEventListener('loadedmetadata', syncCanvas);
+    video.addEventListener('loadeddata', () => requestAnimationFrame(syncCanvas));
+
+    // Draw active zone polygon
+    function drawZone() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!showZoneOverlay || !activeZone || activeZone.length < 3) return;
+
+      ctx.beginPath();
+      ctx.moveTo(activeZone[0][0] * canvas.width, activeZone[0][1] * canvas.height);
+      for (let i = 1; i < activeZone.length; i++) {
+        ctx.lineTo(activeZone[i][0] * canvas.width, activeZone[i][1] * canvas.height);
+      }
+      ctx.closePath();
+
+      // Semi-transparent fill + boundary glow
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.18)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw vertex pins
+      activeZone.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt[0] * canvas.width, pt[1] * canvas.height, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      });
+    }
+
+    function toggleZoneOverlay() {
+      showZoneOverlay = !showZoneOverlay;
+      drawZone();
+    }
+
+    function applyZonePreset(presetKey) {
+      if (presetKey === 'custom') {
+        activeZone = customPoints.length ? customPoints : [];
+        alert('Click 3 to 6 points directly on the video screen to outline your restricted zone.');
+      } else {
+        activeZone = ZONE_PRESETS[presetKey] || ZONE_PRESETS.full;
+      }
+      drawZone();
+    }
+
+    function resetCustomZone() {
+      customPoints = [];
+      document.getElementById('zonePresetSelect').value = 'center';
+      activeZone = ZONE_PRESETS.center;
+      drawZone();
+    }
+
+    // Click on video to add custom points when in custom mode
+    canvas.addEventListener('click', (e) => {
+      const select = document.getElementById('zonePresetSelect');
+      if (select.value !== 'custom') return;
+      const rect = canvas.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      customPoints.push([round(px, 3), round(py, 3)]);
+      activeZone = customPoints;
+      drawZone();
+    });
+
+    function round(val, d = 2) { return Number(val.toFixed(d)); }
+
+    // File selected handler
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      document.getElementById('fileNameDisplay').textContent = file.name;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.load();
+      syncCanvas();
+    }
+
+    // Run Analysis via POST /analyze
+    async function runAnalysis() {
+      const fileInput = document.getElementById('videoFileInput');
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      const btnSpinner = document.getElementById('btnSpinner');
+      const btnText = document.getElementById('btnText');
+
+      let file = fileInput.files[0];
+      const formData = new FormData();
+
+      if (file) {
+        formData.append('file', file);
+      } else {
+        // Fetch current active video as blob if user didn't pick new file
+        try {
+          const resp = await fetch(video.currentSrc || '/uploads/campus_walk_30s.mp4');
+          const blob = await resp.blob();
+          file = new File([blob], 'campus_walk_30s.mp4', { type: 'video/mp4' });
+          formData.append('file', file);
+        } catch (e) {
+          alert('Please select a video file first.');
+          return;
+        }
+      }
+
+      // Convert current percentage zone into pixel coordinates (e.g. 1920x1080 or video native)
+      const vw = video.videoWidth || 1280;
+      const vh = video.videoHeight || 720;
+      const pixelZone = (activeZone || ZONE_PRESETS.center).map(pt => [
+        Math.round(pt[0] * vw),
+        Math.round(pt[1] * vh)
+      ]);
+      formData.append('zone', JSON.stringify(pixelZone));
+
+      const activityProfiles = {
+        people: ['loitering', 'intrusion', 'running', 'crowd'],
+        fall: ['falling'],
+        abandoned: ['abandoned_object'],
+        fire: ['fire_smoke'],
+        all: ['loitering', 'intrusion', 'running', 'crowd', 'abandoned_object', 'falling', 'fire_smoke']
+      };
+      const profile = document.getElementById('analysisMode').value;
+      formData.append('activities', JSON.stringify(activityProfiles[profile]));
+
+      analyzeBtn.disabled = true;
+      btnSpinner.style.display = 'inline-block';
+      btnText.textContent = 'Processing YOLO + Tracking...';
+      hudStatus.textContent = 'Analyzing frames with YOLOv8 & ByteTrack...';
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const data = await response.json();
+
+        currentSegments = data.segments || [];
+        jsonView.textContent = JSON.stringify(data, null, 2);
+
+        renderTimeline(currentSegments);
+        renderEventsFeed(currentSegments);
+        updateStats(currentSegments);
+
+        hudStatus.textContent = `Analysis Complete: ${currentSegments.length} activity intervals detected.`;
+      } catch (err) {
+        console.error(err);
+        hudStatus.textContent = `Analysis Error: ${err.message}`;
+      } finally {
+        analyzeBtn.disabled = false;
+        btnSpinner.style.display = 'none';
+        btnText.textContent = 'Re-Analyze Video';
+      }
+    }
+
+    // Render Timeline Segment Bars
+    function renderTimeline(segments) {
+      // Clear existing bars
+      const existing = timelineTrack.querySelectorAll('.timeline-segment-bar');
+      existing.forEach(el => el.remove());
+
+      const duration = video.duration || 30.0;
+      if (!duration || duration <= 0) return;
+
+      segments.forEach((seg, idx) => {
+        const bar = document.createElement('div');
+        bar.className = 'timeline-segment-bar';
+        const leftPct = Math.max(0, Math.min(100, (seg.start / duration) * 100));
+        const widthPct = Math.max(0.6, Math.min(100 - leftPct, ((seg.end - seg.start) / duration) * 100));
+
+        bar.style.left = `${leftPct}%`;
+        bar.style.width = `${widthPct}%`;
+
+        let color = '#3b82f6';
+        if (seg.label === 'Loitering') color = 'var(--color-loitering)';
+        else if (seg.label === 'Intrusion') color = 'var(--color-intrusion)';
+        else if (seg.label === 'Crowd Formation') color = 'var(--color-crowd)';
+        else if (seg.label === 'Running') color = 'var(--color-running)';
+        else if (seg.label === 'Falling') color = 'var(--color-falling)';
+        else if (seg.label === 'Abandoned Object') color = 'var(--color-abandoned)';
+        else if (seg.label === 'Fire / Smoke') color = 'var(--color-fire-smoke)';
+
+        bar.style.backgroundColor = color;
+        bar.title = `${seg.label} (${seg.start}s - ${seg.end}s, conf: ${seg.confidence})`;
+
+        bar.addEventListener('click', (e) => {
+          e.stopPropagation();
+          jumpToTime(seg.start);
+        });
+
+        timelineTrack.appendChild(bar);
+      });
+    }
+
+    // Render Activity Feed
+    function renderEventsFeed(segments) {
+      eventsList.innerHTML = '';
+      document.getElementById('eventCounterBadge').textContent = `${segments.length} found`;
+
+      if (!segments.length) {
+        eventsList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; padding: 20px 0;">No activities detected in the selected zone.</div>';
+        return;
+      }
+
+      segments.forEach((seg) => {
+        const item = document.createElement('div');
+        item.className = 'event-card';
+
+        let badgeClass = 'badge-running';
+        if (seg.label === 'Loitering') badgeClass = 'badge-loitering';
+        else if (seg.label === 'Intrusion') badgeClass = 'badge-intrusion';
+        else if (seg.label === 'Crowd Formation') badgeClass = 'badge-crowd';
+        else if (seg.label === 'Falling') badgeClass = 'badge-falling';
+        else if (seg.label === 'Abandoned Object') badgeClass = 'badge-abandoned';
+        else if (seg.label === 'Fire / Smoke') badgeClass = 'badge-fire-smoke';
+
+        const trackCount = seg.track_ids ? seg.track_ids.length : 1;
+
+        item.innerHTML = `
+          <div class="event-info">
+            <div class="event-label">
+              <span class="badge ${badgeClass}">${seg.label}</span>
+              <span style="font-size: 0.75rem; color: #9ca3af;">Conf: ${(seg.confidence * 100).toFixed(0)}%</span>
+            </div>
+            <div class="event-time">⏱ ${seg.start}s &rarr; ${seg.end}s &bull; ${trackCount} track(s)</div>
+          </div>
+          <button class="event-jump-btn" onclick="jumpToTime(${seg.start})">▶ Jump</button>
+        `;
+
+        eventsList.appendChild(item);
+      });
+    }
+
+    // Update Summary Stats
+    function updateStats(segments) {
+      document.getElementById('statEventsCount').textContent = segments.length;
+      let maxCrowd = 0;
+      segments.forEach(s => {
+        if (s.label === 'Crowd Formation' && s.track_ids && s.track_ids.length > maxCrowd) {
+          maxCrowd = s.track_ids.length;
+        }
+      });
+      document.getElementById('statMaxCrowd').textContent = maxCrowd;
+    }
+
+    // Jump to timestamp and play
+    function jumpToTime(sec) {
+      video.currentTime = sec;
+      video.play();
+    }
+
+    // Timeline Click Seeking
+    function handleTimelineClick(event) {
+      const rect = timelineTrack.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      const duration = video.duration || 30.0;
+      video.currentTime = pct * duration;
+    }
+
+    // Sync Playhead & Real-Time Live HUD with video playback
+    video.addEventListener('timeupdate', () => {
+      const t = video.currentTime;
+      const duration = video.duration || 30.0;
+      const pct = (t / duration) * 100;
+      playhead.style.left = `${Math.min(100, Math.max(0, pct))}%`;
+
+      const mins = Math.floor(t / 60);
+      const secs = (t % 60).toFixed(1);
+      hudTime.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(4, '0')}`;
+
+      // Check if any activity is occurring right now
+      const activeSeg = currentSegments.find(s => t >= s.start && t <= s.end);
+      if (activeSeg) {
+        hudBanner.classList.add('alert-active');
+        hudIcon.textContent = '🚨';
+        hudStatus.innerHTML = `<strong>ALERT:</strong> ${activeSeg.label.toUpperCase()} detected &bull; ${(activeSeg.confidence * 100).toFixed(0)}% conf &bull; [${activeSeg.start}s &ndash; ${activeSeg.end}s]`;
+      } else {
+        hudBanner.classList.remove('alert-active');
+        hudIcon.textContent = '🟢';
+        hudStatus.textContent = 'Scene Normal — Monitoring area';
+      }
+    });
+
+    // Auto-load current benchmark results on first load if available
+    window.addEventListener('DOMContentLoaded', async () => {
+      syncCanvas();
+      try {
+        const res = await fetch('/outputs/campus_walk_30s_predictions.json');
+        if (res.ok) {
+          const data = await res.json();
+          currentSegments = data.segments || [];
+          jsonView.textContent = JSON.stringify(data, null, 2);
+          renderTimeline(currentSegments);
+          renderEventsFeed(currentSegments);
+          updateStats(currentSegments);
+        }
+      } catch (e) {
+        // Ignore fallback
+      }
+    });
+  </script>
+</body>
+</html>

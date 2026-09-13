@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+ultralytics
+opencv-python
+mediapipe
+pandas
+numpy
+scikit-learn
+matplotlib
+yt-dlp

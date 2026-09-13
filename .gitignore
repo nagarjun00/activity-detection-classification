@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env/
+
+# Outputs and data
+outputs/
+data/uploads/*.mp4
+!data/uploads/.gitkeep
+
+# Pretrained weights (track via Git LFS or remove if not needed)
+yolov8n.pt
+
+# Windows bat files (keep at root, not tracked)
+ffmpeg.bat
+yt-dlp.bat
+
+# Distribution files
+/dist/
+/build/

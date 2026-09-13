@@ -1,0 +1,10 @@
+{
+  "video": "retail_store_cctv.mp4",
+  "segments": [
+    { "start": 3.0, "end": 35.0, "label": "Crowd Formation" },
+    { "start": 4.0, "end": 20.0, "label": "Loitering" },
+    { "start": 39.0, "end": 62.0, "label": "Loitering" },
+    { "start": 88.0, "end": 111.0, "label": "Loitering" },
+    { "start": 39.0, "end": 111.0, "label": "Crowd Formation" }
+  ]
+}

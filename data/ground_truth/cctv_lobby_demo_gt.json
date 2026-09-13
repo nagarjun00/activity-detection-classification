@@ -1,0 +1,15 @@
+{
+  "video": "cctv_lobby_demo.mp4",
+  "segments": [
+    { "start": 5.0, "end": 25.0, "label": "Crowd Formation" },
+    { "start": 15.0, "end": 27.0, "label": "Loitering" },
+    { "start": 34.0, "end": 67.0, "label": "Crowd Formation" },
+    { "start": 35.0, "end": 57.0, "label": "Loitering" },
+    { "start": 4.0, "end": 13.0, "label": "Running" },
+    { "start": 28.0, "end": 37.0, "label": "Running" },
+    { "start": 40.0, "end": 45.0, "label": "Running" },
+    { "start": 48.0, "end": 57.0, "label": "Running" },
+    { "start": 54.0, "end": 61.0, "label": "Running" },
+    { "start": 57.0, "end": 67.0, "label": "Running" }
+  ]
+}

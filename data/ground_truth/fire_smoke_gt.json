@@ -1,0 +1,6 @@
+{
+  "video": "fire_smoke.mp4",
+  "segments": [
+    { "start": 12.0, "end": 45.0, "label": "Fire / Smoke" }
+  ]
+}
